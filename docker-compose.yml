@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  
+  seyahat-app:
+    build: .
+    container_name: umay_app
+    depends_on:
+      - mongodb
+    
+    environment:
+      - DISPLAY=host.docker.internal:0.0
+      - MONGO_HOST=mongodb 
+      - DISPLAY=host.docker.internal:0.0
+    volumes:
+      - .:/app
+
+  mongodb:
+    image: mongo:latest
+    container_name: seyahat_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
