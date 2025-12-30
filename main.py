@@ -3,7 +3,7 @@ import base64
 import re
 import os
 
-# --- PYQT5 IMPORTLARI ---
+# PYQT5 IMPORTLARI 
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QLineEdit, QPushButton, QTabWidget, QTableWidget, 
                              QTableWidgetItem, QMessageBox, QHeaderView, QFormLayout, 
@@ -13,7 +13,7 @@ from PyQt5.QtCore import Qt, QPoint, QThread, pyqtSignal, QByteArray, QBuffer, Q
 from PyQt5.QtGui import QCursor, QPixmap, QImage, QPainter, QColor, QBitmap
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 
-# --- PROJE IMPORTLARI ---
+# PROJE IMPORTLARI 
 # Eğer bu dosyalar yoksa hata verir, proje klasöründe olduklarından emin ol.
 try:
     from db import DatabaseManager
@@ -33,14 +33,14 @@ try:
 except ImportError:
     create_notion_page = None
 
-# Pygame Import (Ses için garanti çözüm)
+# Pygame Import 
 try:
     import pygame
 except ImportError:
     print("UYARI: pygame yüklü değil. 'pip install pygame' yazın.")
     pygame = None
 
-# --- ARKA PLANDA ÇALIŞAN AGENT THREAD'İ ---
+# ARKA PLANDA ÇALIŞAN AGENT THREAD'İ 
 class AgentWorker(QThread):
     finished = pyqtSignal(dict)
     
@@ -59,7 +59,7 @@ class AgentWorker(QThread):
             print(f"Agent Hatası: {e}")
             self.finished.emit({})
 
-# --- BAŞLIK ÇUBUĞU ---
+# BAŞLIK ÇUBUĞU
 class CustomTitleBar(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -142,7 +142,7 @@ class CustomTitleBar(QFrame):
     def mouseReleaseEvent(self, event):
         self.pressing = False
 
-# --- PIXELART KAMERA WİDGET ---
+#  PIXELART KAMERA WİDGET 
 class CameraWidget(QWidget):
     def __init__(self, plan_data, db, parent=None):
         super().__init__(parent)
@@ -294,7 +294,7 @@ class CameraWidget(QWidget):
                 self.current_index = max(0, len(self.photos) - 1) 
             self.update_screen()
 
-# --- MÜZİK ÇALAR ---
+# MÜZİK ÇALAR 
 class MusicPlayerWidget(QWidget):
     cd_double_clicked = pyqtSignal() 
 
@@ -434,7 +434,7 @@ class MusicPlayerWidget(QWidget):
             self.custom_cd_pixmap = None
         self.update()
 
-# --- MÜZİK LİSTESİ PENCERESİ ---
+# MÜZİK LİSTESİ PENCERESİ 
 class MusicFolderDialog(QDialog):
     def __init__(self, db, user_id, music_player):
         super().__init__()
@@ -535,7 +535,7 @@ class MusicFolderDialog(QDialog):
         self.player.play()
         self.player.show() 
 
-# --- PLAN DÜZENLEME PENCERESİ ---
+# PLAN DÜZENLEME PENCERESİ 
 class PlanEditDialog(QDialog):
     def __init__(self, db, plan_data, parent=None):
         super().__init__(parent)

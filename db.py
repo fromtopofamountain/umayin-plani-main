@@ -110,13 +110,12 @@ class DatabaseManager:
             
             song_doc = {
                 "id": new_song_id,
-                "path": str(path), # Yolu garanti string yap
-                "name": str(name), # İsmi garanti string yap
+                "path": str(path), 
+                "name": str(name), 
                 "image": image_b64
             }
             
-            # Veritabanına Ekle ($push ile listeye atıyoruz)
-            # self.db["users"] yapısı en garantisidir.
+            # Veritabanına Ekle ($push ile)
             result = self.db["users"].update_one(
                 {"_id": user_id},
                 {"$push": {"music_library": song_doc}}
