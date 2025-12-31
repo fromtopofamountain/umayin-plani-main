@@ -14,12 +14,11 @@ from PyQt5.QtGui import QCursor, QPixmap, QImage, QPainter, QColor, QBitmap
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 
 # PROJE IMPORTLARI 
-# Eğer bu dosyalar yoksa hata verir, proje klasöründe olduklarından emin ol.
 try:
     from db import DatabaseManager
-    from agents import UmayAna
+    from ai_agents import UmayAnaAgent # Yeni agent dosyamız
 except ImportError as e:
-    print(f"KRİTİK HATA: db.py veya agents.py bulunamadı! {e}")
+    print(f"KRİTİK HATA: db.py veya ai_agent.py bulunamadı! {e}")
     sys.exit(1)
 
 # Helper dosyaları kontrolü 
@@ -41,6 +40,7 @@ except ImportError:
     pygame = None
 
 # ARKA PLANDA ÇALIŞAN AGENT THREAD'İ 
+# ARKA PLANDA ÇALIŞAN AGENT THREAD'İ 
 class AgentWorker(QThread):
     finished = pyqtSignal(dict)
     
@@ -49,11 +49,20 @@ class AgentWorker(QThread):
         self.destination = destination
         self.dates = dates
         self.budget = budget
-        self.umay = UmayAna()
+        self.agent = UmayAnaAgent()
 
     def run(self):
         try:
-            plan = self.umay.create_travel_plan(self.destination, self.dates, self.budget)
+            # 1. Yapay zeka planı oluştursun
+            plan = self.agent.planla(self.destination, self.dates, self.budget)
+            
+            # 2. 🔥 ÇÖZÜM BURADA: Girdiğimiz bilgileri hemen pakete ekliyoruz
+            # Böylece veri asla kaybolmuyor.
+            plan["destination"] = self.destination
+            plan["dates"] = self.dates
+            plan["budget"] = self.budget
+            
+            # 3. Hazır paketi gönder
             self.finished.emit(plan)
         except Exception as e:
             print(f"Agent Hatası: {e}")
@@ -90,7 +99,7 @@ class CustomTitleBar(QFrame):
         
         self.btn_minimize = QPushButton("_")
         self.btn_minimize.setStyleSheet(btn_style)
-        self.btn_minimize.setCursor(Qt.PointingHandCursor) # Varsayılan el
+        self.btn_minimize.setCursor(Qt.PointingHandCursor)
         self.btn_minimize.clicked.connect(self.parent.showMinimized)
         
         self.btn_maximize = QPushButton("⬜")
@@ -112,7 +121,6 @@ class CustomTitleBar(QFrame):
         self.start = QPoint(0, 0)
         self.pressing = False
 
-        # Eğer global el cursor varsa onu kullan
         if 'HAND_CURSOR' in globals() and globals()['HAND_CURSOR']:
             self.btn_minimize.setCursor(globals()['HAND_CURSOR'])
             self.btn_maximize.setCursor(globals()['HAND_CURSOR'])
@@ -142,7 +150,7 @@ class CustomTitleBar(QFrame):
     def mouseReleaseEvent(self, event):
         self.pressing = False
 
-#  PIXELART KAMERA WİDGET 
+# PIXELART KAMERA WİDGET 
 class CameraWidget(QWidget):
     def __init__(self, plan_data, db, parent=None):
         super().__init__(parent)
@@ -191,7 +199,6 @@ class CameraWidget(QWidget):
         self.btn_next.setStyleSheet("background-color: transparent; border: none;")
         self.btn_next.clicked.connect(self.next_photo)
 
-        # Cursor ayarı
         if 'HAND_CURSOR' in globals() and globals()['HAND_CURSOR']:
             self.btn_add.setCursor(globals()['HAND_CURSOR'])
             self.btn_delete.setCursor(globals()['HAND_CURSOR'])
@@ -238,8 +245,7 @@ class CameraWidget(QWidget):
             
             rectangular_pixmap = scaled_pixmap.copy(x, y, target_w, target_h)
             
-            # Maskeleme
-            mask_path = "assets/camera_mask.png" # Asset klasörünü kontrol et
+            mask_path = "assets/camera_mask.png"
             if not os.path.exists(mask_path): mask_path = "camera_mask.png"
 
             mask_bitmap = QBitmap(mask_path)
@@ -522,7 +528,6 @@ class MusicFolderDialog(QDialog):
         self.refresh_list()
         
     def play_selected_song(self, item=None):
-        # Butonla çağrıldığında item False (bool) gelir, onu engelle.
         if item is None or not isinstance(item, QListWidgetItem):
             row = self.list_widget.currentRow()
             if row < 0: return
@@ -547,7 +552,6 @@ class PlanEditDialog(QDialog):
         
         layout = QFormLayout(self)
         
-        # Veri güvenliği: .get() or "" (None gelirse çökmeyi engelle)
         self.edit_dest = QLineEdit(plan_data.get("destination") or "")
         self.edit_dates = QLineEdit(plan_data.get("dates") or "")
         self.edit_budget = QLineEdit(plan_data.get("budget") or "")
@@ -718,7 +722,7 @@ class PlanDetailWindow(QDialog):
         self.tab_text = QWidget()
         text_layout = QVBoxLayout(self.tab_text)
 
-        lbl_title = QLabel(f"✨ {plan_data.get('destination', '-').upper()} SEYAHATİ ")
+        lbl_title = QLabel(f"✨ {plan_data.get('destination', 'Bilinmeyen').upper()} SEYAHATİ ")
         lbl_title.setAlignment(Qt.AlignCenter)
         lbl_title.setStyleSheet("font-size: 18px; color: #ff9e99; margin: 10px;")
 
@@ -731,22 +735,20 @@ class PlanDetailWindow(QDialog):
 💰 BÜTÇE: {plan_data.get('budget', '-')}
 
 ------------------------------------------
-🍽️ YEME - İÇME:
-{plan_data.get('food', '-')}
-{plan_data.get('restaurants', '')}
+🍽️ YEME - İÇME (Aş Ata):
+{plan_data.get('yemek', plan_data.get('food', '-'))}
 
 ------------------------------------------
-🎡 AKTİVİTELER:
-{plan_data.get('activities', '-')}
+🎡 AKTİVİTELER (Yel Ana):
+{plan_data.get('aktivite', plan_data.get('activities', '-'))}
 
 ------------------------------------------
-🏨 KONAKLAMA:
-{plan_data.get('accommodation', '-')}
-{plan_data.get('hotel', '')}
+🏨 KONAKLAMA (Yurt İyesi):
+{plan_data.get('konaklama', plan_data.get('accommodation', '-'))}
 
 ------------------------------------------
-🗺️ ROTA:
-{plan_data.get('route', '-')}
+🗺️ ROTA (Oğuz Kaan):
+{plan_data.get('rota', plan_data.get('route', '-'))}
         """
         details.setText(full_text)
         
@@ -993,14 +995,30 @@ class MainWindow(QMainWindow):
     def load_plans(self):
         try:
             plans = self.db.get_plans(self.user["_id"])
+            if plans is None: plans = []
+            
+            self.table.setRowCount(0)
             self.table.setRowCount(len(plans))
             
             for row, plan in enumerate(plans):
-                self.table.setItem(row, 0, QTableWidgetItem(str(plan["_id"])))
-                self.table.setItem(row, 1, QTableWidgetItem(plan["destination"]))
-                self.table.setItem(row, 2, QTableWidgetItem(plan.get("dates", "-")))
-                self.table.setItem(row, 3, QTableWidgetItem(plan.get("budget", "-")))
+                # ID
+                p_id = str(plan.get("_id", ""))
+                self.table.setItem(row, 0, QTableWidgetItem(p_id))
                 
+                # GİDİLECEK YER
+                dest = str(plan.get("destination", "Bilinmeyen Yer"))
+                if not dest or dest == "None": dest = "İsimsiz Plan"
+                self.table.setItem(row, 1, QTableWidgetItem(dest))
+                
+                # TARİH
+                dates = str(plan.get("dates", "-"))
+                self.table.setItem(row, 2, QTableWidgetItem(dates))
+                
+                # BÜTÇE
+                budget = str(plan.get("budget", "-"))
+                self.table.setItem(row, 3, QTableWidgetItem(budget))
+                
+                # Butonlar
                 btn_detail = QPushButton("GÖZ AT")
                 btn_detail.setStyleSheet("background-color: #b5ead7; color: #555; border: 2px solid #95dcc6;")
                 if 'HAND_CURSOR' in globals() and globals()['HAND_CURSOR']: btn_detail.setCursor(globals()['HAND_CURSOR'])
@@ -1085,11 +1103,11 @@ class MainWindow(QMainWindow):
         self.progress.setValue(100)
         self.last_agent_plan = plan
         
-        text = f"=== UMAY ANA'NIN PLANI ===\n\n"
-        text += f"Rota: {plan.get('route', '-')}\n"
-        text += f"Yemek (Aş Ata): {plan.get('food', '-')}\n"
-        text += f"Aktivite (Yel Ana): {plan.get('activities', '-')}\n"
-        text += f"Konaklama (Yurt İyesi): {plan.get('accommodation', '-')}\n"
+        text = f" UMAY ANA'NIN PLANI \n\n"
+        text += f"🗺️ Rota: {plan.get('rota', '-')}\n\n"
+        text += f"🍲 Yemek (Aş Ata): {plan.get('yemek', '-')}\n\n"
+        text += f"🎉 Aktivite (Yel Ana): {plan.get('aktivite', '-')}\n\n"
+        text += f"🏨 Konaklama (Yurt İyesi): {plan.get('konaklama', '-')}\n"
         
         self.agent_output.setText(text)
         self.btn_ask_umay.setEnabled(True)
@@ -1112,13 +1130,32 @@ class MainWindow(QMainWindow):
                 self.agent_output.append(f">> HATA (Notion): {str(e)}")
 
     def save_agent_plan_to_db(self):
-        if self.last_agent_plan:
-            self.db.save_plan(self.user["_id"], self.last_agent_plan)
-            QMessageBox.information(self, "KAYIT", "Agent planı veritabanına işlendi.")
-            self.load_plans()
-        else:
-            QMessageBox.warning(self, "HATA", "Henüz bir plan üretilmedi.")
+     
+        if not hasattr(self, 'last_agent_plan') or not self.last_agent_plan:
+            QMessageBox.warning(self, "HATA", "Henüz bir plan üretilmedi. Lütfen önce Umay Ana'yı çağırın.")
+            return
 
+        # Veri Güvenliği Kontrolü
+        # Destination boş geldiyse, o an kutucukta yazanı alalım
+        if not self.last_agent_plan.get("destination"):
+             self.last_agent_plan["destination"] = self.a_dest.text()
+             self.last_agent_plan["dates"] = self.a_dates.text()
+             self.last_agent_plan["budget"] = self.a_budget.text()
+
+        # 3. Kaynağı belirt ve kaydet
+        self.last_agent_plan["source"] = "agent"
+        
+        try:
+            self.db.save_plan(self.user["_id"], self.last_agent_plan)
+            
+            QMessageBox.information(self, "KAYIT", "✅ Plan başarıyla kaydedildi!")
+            
+            # Listeyi yenile ve Mevcut Planlar sekmesine git
+            self.load_plans()
+            self.tabs.setCurrentIndex(0)
+            
+        except Exception as e:
+            QMessageBox.critical(self, "HATA", f"Veritabanı hatası: {e}")
 # LOGIN PENCERESİ
 class LoginWindow(QWidget):
     def __init__(self, db, open_main_callback, start_index=0):
@@ -1289,13 +1326,11 @@ class LoginWindow(QWidget):
 def main():
     app = QApplication(sys.argv)
     
-    # Cursor'ı burada tanımlıyoruz ki diğer sınıflar erişebilsin
     global HAND_CURSOR
-    HAND_CURSOR = None # Varsayılan olarak boş
+    HAND_CURSOR = None 
 
     # Custom Cursor Yükleme
     try:
-        # Normal Cursor
         cursor_path = "assets/pixel-cursor.png" 
         if not os.path.exists(cursor_path): cursor_path = "pixel-cursor.png"
 
@@ -1304,14 +1339,12 @@ def main():
             custom_cursor = QCursor(cursor_pix, 0, 0)
             app.setOverrideCursor(custom_cursor)
         
-        # El Cursor (Global Değişkene Ata)
         hand_path = "assets/pixel-handpoint.png"
         if not os.path.exists(hand_path): hand_path = "assets/pixel-handpoint"
         
         hand_pix = QPixmap(hand_path)
         if not hand_pix.isNull():
-            # El cursor'ı global değişkene atıyoruz
-            HAND_CURSOR = QCursor(hand_pix, 10, 0) # Hotspot ayarı (10,0)
+            HAND_CURSOR = QCursor(hand_pix, 10, 0) 
             globals()['HAND_CURSOR'] = HAND_CURSOR
             print("El cursor yüklendi.")
     except Exception as e:
@@ -1331,7 +1364,6 @@ def main():
         QMessageBox.critical(None, "Veritabanı Hatası", f"Veritabanına bağlanılamadı!\n{str(e)}")
         return
     
-    # Pencere Açma Callback'i
     def open_main_window(user):
         global main_win
         try:
