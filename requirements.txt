@@ -2,3 +2,7 @@ PyQt5
 pymongo
 requests
 dnspython
+pygame
+python-dotenv
+google-generative-ai
+notion-client
