@@ -53,16 +53,12 @@ class AgentWorker(QThread):
 
     def run(self):
         try:
-            # 1. Yapay zeka planı oluştursun
             plan = self.agent.planla(self.destination, self.dates, self.budget)
-            
-            # 2. 🔥 ÇÖZÜM BURADA: Girdiğimiz bilgileri hemen pakete ekliyoruz
-            # Böylece veri asla kaybolmuyor.
+
             plan["destination"] = self.destination
             plan["dates"] = self.dates
             plan["budget"] = self.budget
             
-            # 3. Hazır paketi gönder
             self.finished.emit(plan)
         except Exception as e:
             print(f"Agent Hatası: {e}")

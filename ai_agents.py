@@ -124,7 +124,6 @@ class UmayAnaAgent:
                 "aktivite": "Hata",
                 "konaklama": "Hata"
             }
-
         with concurrent.futures.ThreadPoolExecutor() as executor:
             future_food = executor.submit(self.as_ata.suggest, destination, budget)
             future_activities = executor.submit(self.yel_ana.suggest, destination, dates)
@@ -142,5 +141,4 @@ class UmayAnaAgent:
             "aktivite": activity_res,
             "konaklama": stay_res
         }
-        
         return final_plan
